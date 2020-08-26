@@ -14,22 +14,20 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Author: chrisliu
- * Date: 2019/3/29 16:23
- * Mail: gwarmdll@gmail.com
- */
 @Component
-public class Client implements SmartInitializingSingleton {
+public class WsRegister implements SmartInitializingSingleton {
 
     @Value("${eureka.client.serviceUrl.defaultZone}")
     private String defaultZone;
 
-    @Autowired
-    EurekaInstanceConfig config;
+    @Value("${netty-websocket.discovery.serviceName}")
+    private String serviceName;
+
+    @Value("${netty-websocket.discovery.port}")
+    private Integer port;
 
     @Autowired
-    InstanceProperties instanceProperties;
+    private EurekaInstanceConfig config;
 
     private DiscoveryClient discoveryClient;
 
@@ -42,7 +40,7 @@ public class Client implements SmartInitializingSingleton {
             put("defaultZone", defaultZone);
         }});
 
-        this.discoveryClient = new DiscoveryClient(new ApplicationInfoManager(new InstanceConfig(), create(config)),
+        this.discoveryClient = new DiscoveryClient(new ApplicationInfoManager(new InstanceConfig(port), create(config)),
                 eurekaClientConfigBean);
     }
 
@@ -59,25 +57,21 @@ public class Client implements SmartInitializingSingleton {
         if (!namespace.endsWith(".")) {
             namespace = namespace + ".";
         }
-        builder.setNamespace(namespace).setAppName(instanceProperties.getName())
-                .setInstanceId(String.join(":", instanceProperties.getHost(),
-                        instanceProperties.getName(), String.valueOf(instanceProperties.getPort())))
+        builder.setNamespace(namespace).setAppName(serviceName)
+                .setInstanceId(String.join(":", config.getIpAddress(), serviceName, String.valueOf(port)))
                 .setAppGroupName(config.getAppGroupName())
                 .setDataCenterInfo(config.getDataCenterInfo())
-                .setIPAddr(instanceProperties.getHost()).setHostName(instanceProperties.getHost())
-                .setPort(instanceProperties.getPort())
-                .enablePort(InstanceInfo.PortType.UNSECURE,
-                        config.isNonSecurePortEnabled())
+                .setIPAddr(config.getIpAddress())
+                .setHostName(config.getIpAddress())
+                .setPort(port)
+                .enablePort(InstanceInfo.PortType.UNSECURE, config.isNonSecurePortEnabled())
                 .setSecurePort(config.getSecurePort())
                 .enablePort(InstanceInfo.PortType.SECURE, config.getSecurePortEnabled())
-                .setVIPAddress(instanceProperties.getName())
-                .setSecureVIPAddress(instanceProperties.getName())
+//                .setVIPAddress(serviceName)
+//                .setSecureVIPAddress(serviceName)
                 .setHomePageUrl("/", null)
-                .setStatusPageUrl(config.getStatusPageUrlPath(),
-                        config.getStatusPageUrl())
-                .setHealthCheckUrls(config.getHealthCheckUrlPath(),
-                        config.getHealthCheckUrl(), config.getSecureHealthCheckUrl())
-                .setASGName(config.getASGName());
+                .setStatusPageUrl(config.getStatusPageUrlPath(), config.getStatusPageUrl())
+                .setHealthCheckUrls(config.getHealthCheckUrlPath(), config.getHealthCheckUrl(), config.getSecureHealthCheckUrl());
         builder.setStatus(InstanceInfo.InstanceStatus.UP);
 
         // Add any user-specific metadata information
@@ -89,7 +83,7 @@ public class Client implements SmartInitializingSingleton {
                 builder.add(key, value);
             }
         }
-
+        builder.add("management.port", port+"");
         InstanceInfo instanceInfo = builder.build();
         instanceInfo.setLeaseInfo(leaseInfoBuilder.build());
         return instanceInfo;

@@ -9,11 +9,6 @@ import org.yeauty.pojo.Session;
 
 import java.io.IOException;
 
-/**
- * Author: chrisliu
- * Date: 2019/3/29 14:46
- * Mail: gwarmdll@gmail.com
- */
 @ServerEndpoint(prefix = "netty-websocket")
 @Component
 public class Server {
